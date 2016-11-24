@@ -88,18 +88,27 @@ def filter( \
 #         given all of the observations: P(X(T)|E(0), ..., E(T-1)).
 def predict( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
-   """
-      You will need to provide the correct implementation.
-      The dummy implementation returns a probability distrubution that
-      assigns 1 to the first value a state can take and 0 to the rest.
-   """
-   pdist = []
-   for i in range(0,len(stateMap)):
-      if (i == 0):
-         pdist.append(1)
-      else:
-         pdist.append(0)
-   return pdist
+   pdist = prob
+   for i in range(0,len(observations)):
+        has_umbrella = observations[i]
+        p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
+        p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
+        p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
+        new_prob = [0]*3
+        new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
+        new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
+        new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+        new_prob = normalize(new_prob)
+        pdist = new_prob
+   predictions = [0]*3
+   predictions[0] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
+   predictions[1] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
+   predictions[2] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
+   print(predictions[0])
+   print(predictions[1])
+   print(predictions[2])
+
+   return predictions
 
 
 # Smoothing.
@@ -183,19 +192,19 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    # test filtering
    result_filter = filter( \
       stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\nFiltering - distribution over most recent state:')
-   # # for i in range(0,len(result_filter)):
-   # #   print(result_filter[i])
-   # print(stateIndex[0],stateIndex[1],stateIndex[2])
-   #
-   # for i in range(0,len(result_filter)):
-   #    print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
-   # # test prediction
-   # result_predict = predict( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # # print ('\n\nPrediction - distribution over next state:')
-   # for i in range(0,len(result_filter)):
-   #    print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
+   print ('\nFiltering - distribution over most recent state:')
+   for i in range(0,len(result_filter)):
+     print(result_filter[i])
+   print(stateIndex[0],stateIndex[1],stateIndex[2])
+
+   for i in range(0,len(result_filter)):
+      print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
+   # test prediction
+   result_predict = predict( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # print ('\n\nPrediction - distribution over next state:')
+   for i in range(0,len(result_filter)):
+      print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
    # # test smoothing
    # result_smooth = smooth( \
    #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)

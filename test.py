@@ -77,6 +77,11 @@ def filter( \
        new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
        new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
        new_prob = normalize(new_prob)
+    #    if i==len(observations)-2:
+    #        print("printinggggggggggg ")
+    #        print(i)
+    #        for x in range(0,len(new_prob)):
+    #            print(new_prob[x])
        pdist = new_prob
    return pdist
 
@@ -106,21 +111,69 @@ def predict( \
 #         These distributions should be returned as a list of lists.
 def smooth( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
-   """
-      You will need to provide the correct implementation.
-      The dummy implementation returns a list of probability distrubutions
-      that each assign 1 to the first value a state can take and 0 to the rest.
-   """
-   pdist = []
-   for i in range(0,len(stateMap)):
-      if (i == 0):
-         pdist.append(1)
-      else:
-         pdist.append(0)
-   pdist_list = []
-   for k in observations:
-      pdist_list.append(pdist)
-   return pdist_list
+   filtering = []
+   pdist = prob
+   # forward algorithm
+   for i in range(0,len(observations)):
+     has_umbrella = observations[i]
+     p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
+     p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
+     p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
+     new_prob = [0]*3
+     new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
+     new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
+     new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+     new_prob = normalize(new_prob)
+     filtering.append(new_prob)
+     pdist = new_prob
+   # backwards algorithm
+   # print("BEFORE")
+   # print(filtering[len(filtering)-1])
+   # for i in range(0,len(observations)-1):
+   backwards = [filtering[len(filtering)-1]]
+
+   for i in range(0,len(filtering)):
+     has_umbrella = observations[len(observations)-1-i]
+     p_sun = filtering[len(observations)-2-i][0]
+     p_rain = filtering[len(observations)-2-i][1]
+     p_fog = filtering[len(observations)-2-i][2]
+     smoothed_probs = [0]*3
+
+     p_sun_prior = 0
+     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
+     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
+     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+    #  print("printing sun prior")
+    #  print(p_sun_prior)
+
+     smoothed_probs[0] = p_sun*p_sun_prior
+    #  print(p_sun)
+
+     p_rain_prior = 0
+     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
+     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
+     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+     smoothed_probs[1] = p_rain*p_rain_prior
+    #  print(p_rain)
+
+
+     p_fog_prior = 0
+     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
+     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
+     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+     smoothed_probs[2] = p_fog*p_fog_prior
+    #  print(p_fog)
+
+     backwards.insert(0,normalize(smoothed_probs))
+    #  filtering[len(observations)-2-i] = normalize(smoothed_probs)
+    #  print("IN THE FOR LOOP")
+    #  print(filtering[len(filtering)-1])
+   for i in range(0,len(backwards)):
+    print(i)
+    print(backwards[i])
+   # print("AFTER")
+   # print(filtering[len(filtering)-1])
+   return backwards
 
 
 # Viterbi algorithm.
@@ -175,25 +228,25 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    # for i in range(0,len(classes_short)):
    #   print(classes_short[i])
    # test filtering
-   result_filter = filter( \
-      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   print ('\nFiltering - distribution over most recent state:')
-   for i in range(0,len(result_filter)):
-     print(result_filter[i])
-   print(stateIndex[0],stateIndex[1],stateIndex[2])
-
-   for i in range(0,len(result_filter)):
-      print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
-   # test prediction
-   result_predict = predict( \
-      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\n\nPrediction - distribution over next state:')
-   for i in range(0,len(result_filter)):
-      print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
-   # # test smoothing
-   # result_smooth = smooth( \
+   # result_filter = filter( \
    #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\n\nSmoothing - distribution over state at each point in time:')
+   # print ('\nFiltering - distribution over most recent state:')
+   # for i in range(0,len(result_filter)):
+   #   print(result_filter[i])
+   # print(stateIndex[0],stateIndex[1],stateIndex[2])
+   #
+   # for i in range(0,len(result_filter)):
+   #    print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
+   # # test prediction
+   # result_predict = predict( \
+   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # # print ('\n\nPrediction - distribution over next state:')
+   # for i in range(0,len(result_filter)):
+   #    print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
+   # # test smoothing
+   result_smooth = smooth( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   print ('\n\nSmoothing - distribution over state at each point in time:')
    # for t in range(0,len(result_smooth)):
    #    result_t = result_smooth[t]
    #    print ('   '), ('time'), t,

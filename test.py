@@ -111,7 +111,7 @@ def predict( \
 #         These distributions should be returned as a list of lists.
 def smooth( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
-   filtering = []
+   forward = []
    pdist = prob
    # forward algorithm
    for i in range(0,len(observations)):
@@ -124,19 +124,17 @@ def smooth( \
      new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
      new_prob = normalize(new_prob)
-     filtering.append(new_prob)
+     forward.append(new_prob)
      pdist = new_prob
    # backwards algorithm
-   # print("BEFORE")
-   # print(filtering[len(filtering)-1])
-   # for i in range(0,len(observations)-1):
-   backwards = [filtering[len(filtering)-1]]
 
-   for i in range(0,len(filtering)):
+   backwards = [[1,1,1]]
+   dp = [1,1,1]
+   for i in range(0,len(forward)):
      has_umbrella = observations[len(observations)-1-i]
-     p_sun = filtering[len(observations)-2-i][0]
-     p_rain = filtering[len(observations)-2-i][1]
-     p_fog = filtering[len(observations)-2-i][2]
+     p_sun = forward[len(observations)-2-i][0]
+     p_rain = forward[len(observations)-2-i][1]
+     p_fog = forward[len(observations)-2-i][2]
      smoothed_probs = [0]*3
 
      p_sun_prior = 0
@@ -146,14 +144,14 @@ def smooth( \
     #  print("printing sun prior")
     #  print(p_sun_prior)
 
-     smoothed_probs[0] = p_sun*p_sun_prior
+     smoothed_probs[0] = p_sun*p_sun_prior*dp[0]
     #  print(p_sun)
 
      p_rain_prior = 0
      p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
      p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
-     smoothed_probs[1] = p_rain*p_rain_prior
+     smoothed_probs[1] = p_rain*p_rain_prior*dp[1]
     #  print(p_rain)
 
 
@@ -161,19 +159,23 @@ def smooth( \
      p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
      p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
-     smoothed_probs[2] = p_fog*p_fog_prior
+     smoothed_probs[2] = p_fog*p_fog_prior*dp[2]
     #  print(p_fog)
 
      backwards.insert(0,normalize(smoothed_probs))
+     dp = normalize(smoothed_probs)
     #  filtering[len(observations)-2-i] = normalize(smoothed_probs)
     #  print("IN THE FOR LOOP")
     #  print(filtering[len(filtering)-1])
+   # compute smoothed probabilties
+   posterior = []
    for i in range(0,len(backwards)):
-    print(i)
-    print(backwards[i])
-   # print("AFTER")
-   # print(filtering[len(filtering)-1])
-   return backwards
+     smooth_probs = [0]*3
+     for x in range(0,3):
+       smooth_probs[x] = forward[i][x]*backwards[i][x]
+     posterior.insert(0,normalize(smooth_probs))
+
+   return posterior
 
 
 # Viterbi algorithm.

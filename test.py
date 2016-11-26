@@ -221,8 +221,28 @@ def viterbi( \
                prev_node = z
          probs_dp[j][i] = max_prob
          prev_dp[j][i] = prev_node
+   print(probs_dp[0][9])
+   print(probs_dp[1][9])
+   print(probs_dp[2][9])
+
+
    print(prev_dp)
-   print(probs_dp)
+   # backtrack
+   probable_sequence = []
+   max_prob = 0
+   prev_node = None
+   for j in range(0,3):
+     if probs_dp[j][i] > max_prob:
+       max_prob = probs_dp[j][len(observations)-1]
+       prev_node = prev_dp[j][len(observations)-1]
+   probable_sequence.insert(0,stateIndex[prev_node])
+   # print(probable_sequence)
+   for i in range(len(observations)-2,0,-1):
+       prev_node = prev_dp[prev_node][i]
+       probable_sequence.insert(0,stateIndex[prev_node])
+   # print(probable_sequence)
+
+
 
 # Functions for testing.
 # You should not change any of these functions.

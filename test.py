@@ -66,21 +66,16 @@ def normalize(pdist):
 #         given all of the observations: P(X(T-1)|E(0), ..., E(T-1)).
 def filter( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
+   length = len(prob)
    pdist = prob
    arr = [0]*len(prob)
    for i in range(0,len(observations)):
-       for x in range(0,len(prob)):
+       for x in range(0,length):
            arr[x] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', stateIndex[x]) + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', stateIndex[x]) + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', stateIndex[x])
-       new_prob = [0]*3
-       for x in range(0,len(prob)):
+       new_prob = [0]*length
+       for x in range(0,length):
           new_prob[x] = arr[x]*getObservationProb(eprob, stateMap, obsMap, stateIndex[x], observations[i])
-       new_prob = normalize(new_prob)
-    #    if i==len(observations)-2:
-    #        print("printinggggggggggg ")
-    #        print(i)
-    #        for x in range(0,len(new_prob)):
-    #            print(new_prob[x])
-       pdist = new_prob
+       pdist = normalize(new_prob)
    # print(pdist)
    return pdist
 
@@ -117,7 +112,7 @@ def smooth( \
      p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
      p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
      p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
-     new_prob = [0]*3
+     new_prob = [0]*len(observations)
      new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
      new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
@@ -139,7 +134,7 @@ def smooth( \
     #  p_sun = forward[len(observations)-2-i][0]
     #  p_rain = forward[len(observations)-2-i][1]
     #  p_fog = forward[len(observations)-2-i][2]
-     smoothed_probs = [0]*3
+     smoothed_probs = [0]*len(observations)
 
      p_sun_prior = 0
      p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
@@ -206,7 +201,6 @@ def viterbi( \
    # print(prev_dp)
    for i in range(1,len(observations)):
    # for i in range(1,2):
-
      has_umbrella = observations[i]
      for j in range(0,3):
          max_prob = 0

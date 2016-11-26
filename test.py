@@ -67,15 +67,13 @@ def normalize(pdist):
 def filter( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
    pdist = prob
+   arr = [0]*len(prob)
    for i in range(0,len(observations)):
-       has_umbrella = observations[i]
-       p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
-       p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
-       p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
+       for x in range(0,len(prob)):
+           arr[x] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', stateIndex[x]) + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', stateIndex[x]) + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', stateIndex[x])
        new_prob = [0]*3
-       new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
-       new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
-       new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+       for x in range(0,len(prob)):
+          new_prob[x] = arr[x]*getObservationProb(eprob, stateMap, obsMap, stateIndex[x], observations[i])
        new_prob = normalize(new_prob)
     #    if i==len(observations)-2:
     #        print("printinggggggggggg ")
@@ -83,6 +81,7 @@ def filter( \
     #        for x in range(0,len(new_prob)):
     #            print(new_prob[x])
        pdist = new_prob
+   # print(pdist)
    return pdist
 
 # Prediction.
@@ -95,10 +94,9 @@ def predict( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
    filtered = filter( \
       stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations)
-   predictions = [0]*3
-   predictions[0] = filtered[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + filtered[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + filtered[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
-   predictions[1] = filtered[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + filtered[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + filtered[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
-   predictions[2] = filtered[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + filtered[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + filtered[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
+   predictions = [0]*len(prob)
+   for i in range(0,len(prob)):
+     predictions[i] = filtered[0]*getNextStateProb(tprob, stateMap, 'sunny', stateIndex[i]) + filtered[1]*getNextStateProb(tprob, stateMap, 'rainy', stateIndex[i]) + filtered[2]*getNextStateProb(tprob, stateMap, 'foggy', stateIndex[i])
    return predictions
 
 # Smoothing.
@@ -280,8 +278,8 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    # for i in range(0,len(classes_short)):
    #   print(classes_short[i])
    # test filtering
-   # result_filter = filter( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   result_filter = filter( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
    # print ('\nFiltering - distribution over most recent state:')
    # for i in range(0,len(result_filter)):
    #   print(result_filter[i])
@@ -306,10 +304,10 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    #       print ('   '), stateIndex[i], ('%1.3f') % result_t[i],
    #    print (' ')
    # # test viterbi
-   result_viterbi = viterbi( \
-      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
-   # # print ('Viterbi - actual state sequence:\n   '), classes_short
+   # result_viterbi = viterbi( \
+   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # # # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
+   # # # print ('Viterbi - actual state sequence:\n   '), classes_short
    # print ('The accuracy of your viterbi classifier on the short data set is'), \
    #    accuracy(classes_short, result_viterbi)
    # result_viterbi_full = viterbi( \

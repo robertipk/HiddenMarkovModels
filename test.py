@@ -119,10 +119,10 @@ def smooth( \
      new_prob = normalize(new_prob)
      forward.append(new_prob)
      pdist = new_prob
-   # print("printing forward")
-   # print(len(forward))
-   # for i in range(0,len(forward)):
-   #     print(forward[i])
+   print("printing forward")
+   print(len(forward))
+   for i in range(0,len(forward)):
+       print(forward[i])
    # backwards algorithm
    backwards = [[1,1,1]]
    dp = [1,1,1]
@@ -134,7 +134,7 @@ def smooth( \
     #  p_sun = forward[len(observations)-2-i][0]
     #  p_rain = forward[len(observations)-2-i][1]
     #  p_fog = forward[len(observations)-2-i][2]
-     smoothed_probs = [0]*len(observations)
+     smoothed_probs = [0]*len(prob)
 
      p_sun_prior = 0
      p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
@@ -169,9 +169,9 @@ def smooth( \
    # compute smoothed probabilties
 
    backwards.pop(0)
-   # print("printing backwards")
-   # for i in range(0,len(backwards)):
-   #     print(backwards[i])
+   print("printing backwards")
+   for i in range(0,len(backwards)):
+       print(backwards[i])
    posterior = []
    for i in range(0,len(backwards)):
      smooth_probs = [0]*3
@@ -193,52 +193,37 @@ def smooth( \
 #         (ie [sunny, foggy, rainy, sunny, ...])
 def viterbi( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
-   prev_dp = [[0 for y in range(len(observations))] for x in range(3)] # for backtracing
-   probs_dp = [[0 for y in range(len(observations))] for x in range(3)] # probabilities
+   prev_dp = [[0 for y in range(len(observations))] for x in range(3)] # DP matrix for backtracing
+   probs_dp = [[0 for y in range(len(observations))] for x in range(3)] # DP matrix for probabilities
    # fill in first column
    for i in range(0,3):
      probs_dp[i][0] = prob[i]*getObservationProb(eprob, stateMap, obsMap, stateIndex[i], observations[0])
-   # print(probs_dp)
-   # print(prev_dp)
    # fill in rest of probabilities and tables
    for i in range(1,len(observations)):
-   # for i in range(1,2):
      has_umbrella = observations[i]
      for j in range(0,3):
          max_prob = 0
          prev_node = None
          for z in range(0,3):
              prob = probs_dp[z][i-1]*getNextStateProb(tprob, stateMap, stateIndex[z], stateIndex[j])*getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella)
-             # print(probs_dp[z][i-1]," ",getNextStateProb(tprob, stateMap, stateIndex[z], stateIndex[j])," ",getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella))
              if prob > max_prob:
                max_prob = prob
                prev_node = z
          probs_dp[j][i] = max_prob
          prev_dp[j][i] = prev_node
-   # print(probs_dp[0][9])
-   # print(probs_dp[1][9])
-   # print(probs_dp[2][9])
-   # backtrack
    max_prob = 0
    prev_node = None
+   # find max in last column
    for j in range(0,3):
      if probs_dp[j][len(observations)-1] > max_prob:
        max_prob = probs_dp[j][len(observations)-1]
        prev_node = prev_dp[j][len(observations)-1]
-   # find max in last column
    probable_sequence = [stateIndex[prev_node]]
+   # backtrace
    for i in range(len(observations)-1,0,-1):
-       print(i)
        prev_node = prev_dp[prev_node][i]
        probable_sequence.insert(0,stateIndex[prev_node])
-   # max_prob = 0
-   # prev_node = None
-   # for j in range(0,3):
-   #   if probs_dp[j][0] > max_prob:
-   #     max_prob = probs_dp[j][0]
-   #     prev_node = j
-   # probable_sequence.insert(0,stateIndex[prev_node])
-   print("my sequence ", probable_sequence)
+   print(probable_sequence)
    probable_sequence
 
 
@@ -293,8 +278,8 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    # for i in range(0,len(result_filter)):
    #    print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
    # # test smoothing
-   # result_smooth = smooth( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   result_smooth = smooth( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
    # print ('\n\nSmoothing - distribution over state at each point in time:')
    # for t in range(0,len(result_smooth)):
    #    result_t = result_smooth[t]
@@ -303,10 +288,9 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    #       print ('   '), stateIndex[i], ('%1.3f') % result_t[i],
    #    print (' ')
    # test viterbi
-   result_viterbi = viterbi( \
-      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
-   # # print ('Viterbi - actual state sequence:\n   '), classes_short
+   # result_viterbi = viterbi(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
+   # print ('Viterbi - actual state sequence:\n   '), classes_short
    # print ('The accuracy of your viterbi classifier on the short data set is'), \
    #    accuracy(classes_short, result_viterbi)
    # result_viterbi_full = viterbi( \

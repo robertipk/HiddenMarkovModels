@@ -112,25 +112,25 @@ def smooth( \
      p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
      p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
      p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
-     new_prob = [0]*len(observations)
+     new_prob = [0]*len(prob)
      new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
      new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
      new_prob = normalize(new_prob)
      forward.append(new_prob)
      pdist = new_prob
-   print("printing forward")
-   print(len(forward))
-   for i in range(0,len(forward)):
-       print(forward[i])
+   # print("printing forward")
+   # print(len(forward))
+   # for i in range(0,len(forward)):
+   #     print(forward[i])
    # backwards algorithm
    backwards = [[1,1,1]]
    dp = [1,1,1]
    for i in range(0,len(forward)):
      has_umbrella = observations[len(observations)-1-i]
-     print("has umbrella is ",has_umbrella)
-     print("dp is ")
-     print(dp)
+    #  print("has umbrella is ",has_umbrella)
+    #  print("dp is ")
+    #  print(dp)
     #  p_sun = forward[len(observations)-2-i][0]
     #  p_rain = forward[len(observations)-2-i][1]
     #  p_fog = forward[len(observations)-2-i][2]
@@ -150,6 +150,7 @@ def smooth( \
      p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
      smoothed_probs[1] = p_rain_prior*dp[1]
+
     #  print(p_rain)
 
 
@@ -168,9 +169,9 @@ def smooth( \
    # compute smoothed probabilties
 
    backwards.pop(0)
-   print("printing backwards")
-   for i in range(0,len(backwards)):
-       print(backwards[i])
+   # print("printing backwards")
+   # for i in range(0,len(backwards)):
+   #     print(backwards[i])
    posterior = []
    for i in range(0,len(backwards)):
      smooth_probs = [0]*3
@@ -192,13 +193,14 @@ def smooth( \
 #         (ie [sunny, foggy, rainy, sunny, ...])
 def viterbi( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
-   prev_dp = [[0 for y in range(len(observations))] for x in range(3)]
-   prev_dp[0][0], prev_dp[1][0],prev_dp[2][0]= None,None,None
-   probs_dp = [[0 for y in range(len(observations))] for x in range(3)]
+   prev_dp = [[0 for y in range(len(observations))] for x in range(3)] # for backtracing
+   probs_dp = [[0 for y in range(len(observations))] for x in range(3)] # probabilities
+   # fill in first column
    for i in range(0,3):
      probs_dp[i][0] = prob[i]*getObservationProb(eprob, stateMap, obsMap, stateIndex[i], observations[0])
    # print(probs_dp)
    # print(prev_dp)
+   # fill in rest of probabilities and tables
    for i in range(1,len(observations)):
    # for i in range(1,2):
      has_umbrella = observations[i]
@@ -207,7 +209,7 @@ def viterbi( \
          prev_node = None
          for z in range(0,3):
              prob = probs_dp[z][i-1]*getNextStateProb(tprob, stateMap, stateIndex[z], stateIndex[j])*getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella)
-            #  print(probs_dp[z][i-1]," ",getNextStateProb(tprob, stateMap, stateIndex[z], stateIndex[j])," ",getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella))
+             # print(probs_dp[z][i-1]," ",getNextStateProb(tprob, stateMap, stateIndex[z], stateIndex[j])," ",getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella))
              if prob > max_prob:
                max_prob = prob
                prev_node = z
@@ -217,24 +219,27 @@ def viterbi( \
    # print(probs_dp[1][9])
    # print(probs_dp[2][9])
    # backtrack
-   probable_sequence = []
    max_prob = 0
    prev_node = None
    for j in range(0,3):
-     if probs_dp[j][i] > max_prob:
+     if probs_dp[j][len(observations)-1] > max_prob:
        max_prob = probs_dp[j][len(observations)-1]
        prev_node = prev_dp[j][len(observations)-1]
+   # find max in last column
+   probable_sequence = [stateIndex[prev_node]]
    for i in range(len(observations)-1,0,-1):
+       print(i)
        prev_node = prev_dp[prev_node][i]
        probable_sequence.insert(0,stateIndex[prev_node])
-   max_prob = 0
-   prev_node = None
-   for j in range(0,3):
-     if probs_dp[j][0] > max_prob:
-       max_prob = probs_dp[j][0]
-       prev_node = j
-   probable_sequence.insert(0,stateIndex[prev_node])
-   print(probable_sequence)
+   # max_prob = 0
+   # prev_node = None
+   # for j in range(0,3):
+   #   if probs_dp[j][0] > max_prob:
+   #     max_prob = probs_dp[j][0]
+   #     prev_node = j
+   # probable_sequence.insert(0,stateIndex[prev_node])
+   print("my sequence ", probable_sequence)
+   probable_sequence
 
 
 
@@ -267,13 +272,13 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    n_obs_short = 10
    obs_short = observations[0:n_obs_short]
    classes_short = classes[0:n_obs_short]
-   #print('Short observation sequence:')
-   #print('   '), obs_short
-   # for i in range(0,len(classes_short)):
-   #   print(classes_short[i])
+   print('Short observation sequence:')
+   print('   '), obs_short
+   for i in range(0,len(classes_short)):
+     print(classes_short[i])
    # test filtering
-   result_filter = filter( \
-      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # result_filter = filter( \
+   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
    # print ('\nFiltering - distribution over most recent state:')
    # for i in range(0,len(result_filter)):
    #   print(result_filter[i])
@@ -297,11 +302,11 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    #    for i in range(0,len(result_t)):
    #       print ('   '), stateIndex[i], ('%1.3f') % result_t[i],
    #    print (' ')
-   # # test viterbi
-   # result_viterbi = viterbi( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # # # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
-   # # # print ('Viterbi - actual state sequence:\n   '), classes_short
+   # test viterbi
+   result_viterbi = viterbi( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
+   # # print ('Viterbi - actual state sequence:\n   '), classes_short
    # print ('The accuracy of your viterbi classifier on the short data set is'), \
    #    accuracy(classes_short, result_viterbi)
    # result_viterbi_full = viterbi( \

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import sys
 import re
-
+# https://github.com/robertipk/HiddenMarkovModels
 usage = "\nusage:   ./hmm.py weather data\nexample: ./hmm.py weather foggy-1000.txt (to test weather model on foggy-1000.txt)"
 
 # This section defines states and probabilities used by the HMMs.
@@ -68,7 +68,7 @@ def filter( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
    length = len(prob)
    pdist = prob
-   arr = [0]*len(prob)
+   arr = [0]*length
    for i in range(0,len(observations)):
        for x in range(0,length):
            arr[x] = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', stateIndex[x]) + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', stateIndex[x]) + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', stateIndex[x])
@@ -76,7 +76,7 @@ def filter( \
        for x in range(0,length):
           new_prob[x] = arr[x]*getObservationProb(eprob, stateMap, obsMap, stateIndex[x], observations[i])
        pdist = normalize(new_prob)
-   # print(pdist)
+   print("filter results: ", pdist)
    return pdist
 
 # Prediction.
@@ -92,6 +92,7 @@ def predict( \
    predictions = [0]*len(prob)
    for i in range(0,len(prob)):
      predictions[i] = filtered[0]*getNextStateProb(tprob, stateMap, 'sunny', stateIndex[i]) + filtered[1]*getNextStateProb(tprob, stateMap, 'rainy', stateIndex[i]) + filtered[2]*getNextStateProb(tprob, stateMap, 'foggy', stateIndex[i])
+   print("predictions: ", predictions)
    return predictions
 
 # Smoothing.
@@ -104,6 +105,7 @@ def predict( \
 #         These distributions should be returned as a list of lists.
 def smooth( \
    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations):
+   num_states = len(prob)
    forward = []
    pdist = prob
    # forward algorithm
@@ -112,74 +114,54 @@ def smooth( \
      p_sun = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'sunny') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'sunny') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'sunny')
      p_rain = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'rainy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'rainy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'rainy')
      p_fog = pdist[0]*getNextStateProb(tprob, stateMap, 'sunny', 'foggy') + pdist[1]*getNextStateProb(tprob, stateMap, 'rainy', 'foggy') + pdist[2]*getNextStateProb(tprob, stateMap, 'foggy', 'foggy')
-     new_prob = [0]*len(prob)
+
+     new_prob = [0]*num_states
      new_prob[0] = p_sun*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
      new_prob[1] = p_rain*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
      new_prob[2] = p_fog*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
      new_prob = normalize(new_prob)
      forward.append(new_prob)
      pdist = new_prob
-   print("printing forward")
-   print(len(forward))
-   for i in range(0,len(forward)):
-       print(forward[i])
+   # print("printing forward")
+   # for i in range(0,len(forward)):
+   #     print(forward[i])
    # backwards algorithm
    backwards = [[1,1,1]]
    dp = [1,1,1]
    for i in range(0,len(forward)):
      has_umbrella = observations[len(observations)-1-i]
-    #  print("has umbrella is ",has_umbrella)
-    #  print("dp is ")
-    #  print(dp)
-    #  p_sun = forward[len(observations)-2-i][0]
-    #  p_rain = forward[len(observations)-2-i][1]
-    #  p_fog = forward[len(observations)-2-i][2]
-     smoothed_probs = [0]*len(prob)
+     smoothed_probs = [0]*num_states
 
      p_sun_prior = 0
-     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
-     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
-     p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
-    #  print("printing sun prior")
-    #  print(p_sun_prior)
+     for j in range(0,num_states):
+       p_sun_prior += getNextStateProb(tprob, stateMap, 'sunny', stateIndex[j])*getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella)
      smoothed_probs[0] = p_sun_prior*dp[0]
-    #  print(p_sun)
 
      p_rain_prior = 0
-     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
-     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
-     p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+     for j in range(0,num_states):
+       p_rain_prior += getNextStateProb(tprob, stateMap, 'rainy', stateIndex[j])*getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella)
      smoothed_probs[1] = p_rain_prior*dp[1]
 
-    #  print(p_rain)
-
-
      p_fog_prior = 0
-     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'sunny')*getObservationProb(eprob, stateMap, obsMap, 'sunny', has_umbrella)
-     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'rainy')*getObservationProb(eprob, stateMap, obsMap, 'rainy', has_umbrella)
-     p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', 'foggy')*getObservationProb(eprob, stateMap, obsMap, 'foggy', has_umbrella)
+     for j in range(0,num_states):
+       p_fog_prior += getNextStateProb(tprob, stateMap, 'foggy', stateIndex[j])*getObservationProb(eprob, stateMap, obsMap, stateIndex[j], has_umbrella)
      smoothed_probs[2] = p_fog_prior*dp[2]
-    #  print(p_fog)
+
      dp = normalize(smoothed_probs)
      backwards.insert(0,dp)
 
-    #  filtering[len(observations)-2-i] = normalize(smoothed_probs)
-    #  print("IN THE FOR LOOP")
-    #  print(filtering[len(filtering)-1])
-   # compute smoothed probabilties
-
    backwards.pop(0)
-   print("printing backwards")
-   for i in range(0,len(backwards)):
-       print(backwards[i])
+   # print("printing backwards")
+   # for i in range(0,len(backwards)):
+   #     print(backwards[i])
+   # compute the smoothed probability values
    posterior = []
    for i in range(0,len(backwards)):
-     smooth_probs = [0]*3
-     for x in range(0,3):
-    #    print(i," ", x)
+     smooth_probs = [0]*num_states
+     for x in range(0,num_states):
        smooth_probs[x] = forward[i][x]*backwards[i][x]
      posterior.append(normalize(smooth_probs))
-   print("printing posterior")
+   print("printing smoothing: ")
    for i in range(0,len(posterior)):
        print(posterior[i])
    return posterior
@@ -223,8 +205,8 @@ def viterbi( \
    for i in range(len(observations)-1,0,-1):
        prev_node = prev_dp[prev_node][i]
        probable_sequence.insert(0,stateIndex[prev_node])
-   print(probable_sequence)
-   probable_sequence
+   print("viterbi: ", probable_sequence)
+   return probable_sequence
 
 
 
@@ -262,37 +244,37 @@ def test(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, data):
    for i in range(0,len(classes_short)):
      print(classes_short[i])
    # test filtering
-   # result_filter = filter( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\nFiltering - distribution over most recent state:')
-   # for i in range(0,len(result_filter)):
-   #   print(result_filter[i])
-   # print(stateIndex[0],stateIndex[1],stateIndex[2])
-   #
-   # for i in range(0,len(result_filter)):
-   #    print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
-   # # test prediction
-   # result_predict = predict( \
-   #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # # print ('\n\nPrediction - distribution over next state:')
-   # for i in range(0,len(result_filter)):
-   #    print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
-   # # test smoothing
+   result_filter = filter( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   print ('\nFiltering - distribution over most recent state:')
+   for i in range(0,len(result_filter)):
+     print(result_filter[i])
+   print(stateIndex[0],stateIndex[1],stateIndex[2])
+
+   for i in range(0,len(result_filter)):
+      print ('   '), stateIndex[i], ('%1.3f') % result_filter[i],
+   # test prediction
+   result_predict = predict( \
+      stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   # print ('\n\nPrediction - distribution over next state:')
+   for i in range(0,len(result_filter)):
+      print ('   '), stateIndex[i], ('%1.3f') % result_predict[i],
+   # test smoothing
    result_smooth = smooth( \
       stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\n\nSmoothing - distribution over state at each point in time:')
-   # for t in range(0,len(result_smooth)):
-   #    result_t = result_smooth[t]
-   #    print ('   '), ('time'), t,
-   #    for i in range(0,len(result_t)):
-   #       print ('   '), stateIndex[i], ('%1.3f') % result_t[i],
-   #    print (' ')
+   print ('\n\nSmoothing - distribution over state at each point in time:')
+   for t in range(0,len(result_smooth)):
+      result_t = result_smooth[t]
+      print ('   '), ('time'), t,
+      for i in range(0,len(result_t)):
+         print ('   '), stateIndex[i], ('%1.3f') % result_t[i],
+      print (' ')
    # test viterbi
-   # result_viterbi = viterbi(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
-   # print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
-   # print ('Viterbi - actual state sequence:\n   '), classes_short
-   # print ('The accuracy of your viterbi classifier on the short data set is'), \
-   #    accuracy(classes_short, result_viterbi)
+   result_viterbi = viterbi(stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, obs_short)
+   print ('\nViterbi - predicted state sequence:\n   '), result_viterbi
+   print ('Viterbi - actual state sequence:\n   '), classes_short
+   print ('The accuracy of your viterbi classifier on the short data set is'), \
+      accuracy(classes_short, result_viterbi)
    # result_viterbi_full = viterbi( \
    #    stateMap, stateIndex, obsMap, obsIndex, prob, tprob, eprob, observations)
    # print ('The accuracy of your viterbi classifier on the entire data set is'), \
